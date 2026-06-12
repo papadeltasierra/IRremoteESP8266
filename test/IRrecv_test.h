@@ -4,9 +4,11 @@
 #define TEST_IRRECV_TEST_H_
 
 #include <math.h>
+
 #include <iostream>
 #include <sstream>
 #include <string>
+
 #include "IRutils.h"
 
 #define EXPECT_STATE_EQ(a, b, c)                    \

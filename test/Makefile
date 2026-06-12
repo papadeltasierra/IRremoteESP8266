@@ -43,7 +43,7 @@ GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
 
 # All Google Mock headers. Note that all Google Test headers are
 # included here too, as they are #included by Google Mock headers.
-# Usually you shouldn't change this definition.	
+# Usually you shouldn't change this definition.
 GMOCK_HEADERS = $(GMOCK_DIR)/include/gmock/*.h \
                 $(GMOCK_DIR)/include/gmock/internal/*.h \
                 $(GTEST_HEADERS)
@@ -170,6 +170,12 @@ IRrecv.o : $(USER_DIR)/IRrecv.cpp $(USER_DIR)/IRrecv.h $(USER_DIR)/IRremoteESP82
 
 IRrecv_test.o : IRrecv_test.cpp $(USER_DIR)/IRsend.h $(USER_DIR)/IRrecv.h IRsend_test.h $(GMOCK_HEADERS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(INCLUDES) -c IRrecv_test.cpp
+
+IRrecvRMT_test.o : IRrecvRMT_test.cpp $(USER_DIR)/IRrecv.h $(USER_DIR)/IRrecvRMT.h IRrecv_test.h $(GMOCK_HEADERS)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(INCLUDES) -c IRrecvRMT_test.cpp
+
+IRsendRMT_test.o : IRsendRMT_test.cpp $(USER_DIR)/IRsend.h $(USER_DIR)/IRsendRMT.h IRsend_test.h $(GMOCK_HEADERS)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(INCLUDES) -c IRsendRMT_test.cpp
 
 IRac.o : $(USER_DIR)/IRac.cpp $(USER_DIR)/IRac.h $(COMMON_DEPS) $(GMOCK_HEADERS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(INCLUDES) -c $(USER_DIR)/IRac.cpp
