@@ -22,12 +22,13 @@ static inline void IRsendRMT_begin(uint16_t) {}
 static inline void IRsendRMT_enableIROut(uint16_t, uint32_t, uint8_t, bool,
                                          bool) {}
 static inline uint16_t IRsendRMT_mark(uint16_t, uint16_t, bool, bool,
-                                      uint32_t) {
+                                      uint32_t)
+{
   return 1;
 }
 static inline void IRsendRMT_space(uint16_t, uint32_t, bool) {}
 static inline void IRsendRMT_flush(uint16_t) {}
 
-#endif  // ESP32
+#endif // ESP32
 
-#endif  // IRSENDRMT_H_
+#endif // IRSENDRMT_H_
