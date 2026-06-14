@@ -37,10 +37,10 @@ const int8_t kPeriodOffset = -2;
 // Calculated on an ESP8266 NodeMCU v2 board using:
 // v2.6.0 with v2.5.2 ESP core @ 160MHz
 const int8_t kPeriodOffset = -2;
-#else  // (defined(ESP8266) && F_CPU == 160000000L)
+#else                             // (defined(ESP8266) && F_CPU == 160000000L)
 // Calculated on ESP8266 Wemos D1 mini using v2.4.1 with v2.4.0 ESP core @ 40MHz
 const int8_t kPeriodOffset = -5;
-#endif  // (defined(ESP8266) && F_CPU == 160000000L)
+#endif                            // (defined(ESP8266) && F_CPU == 160000000L)
 const uint8_t kDutyDefault = 50;  // Percentage
 const uint8_t kDutyMax = 100;     // Percentage
 // delayMicroseconds() is only accurate to 16383us.
@@ -57,28 +57,37 @@ const float kNoTempValue = -100.0;
 extern std::vector<int> timingList;
 #endif  // SWIGLIB
 
+#ifdef UNIT_TEST
+#ifndef HIGH
+#define HIGH 0x1
+#endif
+#ifndef LOW
+#define LOW 0x0
+#endif
+#endif  // UNIT_TEST
+
 /// Enumerators and Structures for the Common A/C API.
 namespace stdAc {
 /// Common A/C settings for A/C operating modes.
 enum class opmode_t {
-  kOff  = -1,
-  kAuto =  0,
-  kCool =  1,
-  kHeat =  2,
-  kDry  =  3,
-  kFan  =  4,
+  kOff = -1,
+  kAuto = 0,
+  kCool = 1,
+  kHeat = 2,
+  kDry = 3,
+  kFan = 4,
   // Add new entries before this one, and update it to point to the last entry
   kLastOpmodeEnum = kFan,
 };
 
 /// Common A/C settings for Fan Speeds.
 enum class fanspeed_t {
-  kAuto =       0,
-  kMin =        1,
-  kLow =        2,
-  kMedium =     3,
-  kHigh =       4,
-  kMax =        5,
+  kAuto = 0,
+  kMin = 1,
+  kLow = 2,
+  kMedium = 3,
+  kHigh = 4,
+  kMax = 5,
   kMediumHigh = 6,
   // Add new entries before this one, and update it to point to the last entry
   kLastFanspeedEnum = kMediumHigh,
@@ -86,13 +95,13 @@ enum class fanspeed_t {
 
 /// Common A/C settings for Vertical Swing.
 enum class swingv_t {
-  kOff =    -1,
-  kAuto =    0,
+  kOff = -1,
+  kAuto = 0,
   kHighest = 1,
-  kHigh =    2,
-  kMiddle =  3,
-  kLow =     4,
-  kLowest =  5,
+  kHigh = 2,
+  kMiddle = 3,
+  kLow = 4,
+  kLowest = 5,
   kUpperMiddle = 6,
   // Add new entries before this one, and update it to point to the last entry
   kLastSwingvEnum = kUpperMiddle,
@@ -112,14 +121,14 @@ enum class ac_command_t {
 
 /// Common A/C settings for Horizontal Swing.
 enum class swingh_t {
-  kOff =     -1,
-  kAuto =     0,  // a.k.a. On.
-  kLeftMax =  1,
-  kLeft =     2,
-  kMiddle =   3,
-  kRight =    4,
+  kOff = -1,
+  kAuto = 0,  // a.k.a. On.
+  kLeftMax = 1,
+  kLeft = 2,
+  kMiddle = 3,
+  kRight = 4,
   kRightMax = 5,
-  kWide =     6,  // a.k.a. left & right at the same time.
+  kWide = 6,  // a.k.a. left & right at the same time.
   // Add new entries before this one, and update it to point to the last entry
   kLastSwinghEnum = kWide,
 };
@@ -243,8 +252,8 @@ enum lg_ac_remote_model_t {
 
 /// Argo A/C model numbers
 enum argo_ac_remote_model_t {
-  SAC_WREM2 = 1,   // (1) ARGO WREM2 remote (default)
-  SAC_WREM3        // (2) ARGO WREM3 remote (touch buttons), bit-len vary by cmd
+  SAC_WREM2 = 1,  // (1) ARGO WREM2 remote (default)
+  SAC_WREM3       // (2) ARGO WREM3 remote (touch buttons), bit-len vary by cmd
 };
 
 /// Toshiba A/C model numbers
@@ -270,6 +279,9 @@ class IRsend {
   VIRTUAL void _delayMicroseconds(uint32_t usec);
   VIRTUALMS uint16_t mark(uint16_t usec);
   VIRTUALMS void space(uint32_t usec);
+  bool useRmt() const { return use_rmt_; }
+  uint32_t rmtPeriod() const { return rmt_period_; }
+  bool rmtActiveHigh() const { return outputOn == 0x1; }
   int8_t calibrate(uint16_t hz = 38000U);
   void sendRaw(const uint16_t buf[], const uint16_t len, const uint16_t hz);
   void sendData(uint16_t onemark, uint32_t onespace, uint16_t zeromark,
@@ -305,14 +317,14 @@ class IRsend {
                    const uint16_t onemark, const uint32_t onespace,
                    const uint16_t zeromark, const uint32_t zerospace,
                    const uint16_t footermark, const uint32_t gap,
-                   const uint8_t *dataptr, const uint16_t nbytes,
+                   const uint8_t* dataptr, const uint16_t nbytes,
                    const uint16_t frequency, const bool MSBfirst,
                    const uint16_t repeat, const uint8_t dutycycle);
   static uint16_t minRepeats(const decode_type_t protocol);
   static uint16_t defaultBits(const decode_type_t protocol);
-  bool send(const decode_type_t type, const uint64_t data,
-            const uint16_t nbits, const uint16_t repeat = kNoRepeat);
-  bool send(const decode_type_t type, const uint8_t *state,
+  bool send(const decode_type_t type, const uint64_t data, const uint16_t nbits,
+            const uint16_t repeat = kNoRepeat);
+  bool send(const decode_type_t type, const uint8_t* state,
             const uint16_t nbytes);
 #if (SEND_NEC || SEND_SHERWOOD || SEND_AIWA_RC_T501 || SEND_SANYO || \
      SEND_MIDEA24)
@@ -390,19 +402,19 @@ class IRsend {
                        const uint16_t repeat = kNoRepeat);
 #endif
 #if SEND_SANYO_AC
-  void sendSanyoAc(const uint8_t *data,
+  void sendSanyoAc(const uint8_t* data,
                    const uint16_t nbytes = kSanyoAcStateLength,
                    const uint16_t repeat = kNoRepeat);
 #endif  // SEND_SANYO_AC
 #if SEND_SANYO_AC88
-  void sendSanyoAc88(const uint8_t *data,
+  void sendSanyoAc88(const uint8_t* data,
                      const uint16_t nbytes = kSanyoAc88StateLength,
                      const uint16_t repeat = kSanyoAc88MinRepeat);
 #endif  // SEND_SANYO_AC88
 #if SEND_SANYO_AC152
-  void sendSanyoAc152(const uint8_t *data,
-                     const uint16_t nbytes = kSanyoAc152StateLength,
-                     const uint16_t repeat = kSanyoAc152MinRepeat);
+  void sendSanyoAc152(const uint8_t* data,
+                      const uint16_t nbytes = kSanyoAc152StateLength,
+                      const uint16_t repeat = kSanyoAc152MinRepeat);
 #endif  // SEND_SANYO_AC152
 #if SEND_DISH
   // sendDISH() should typically be called with repeat=3 as DISH devices
@@ -585,8 +597,8 @@ class IRsend {
                 const uint16_t repeat = kArgoDefaultRepeat,
                 bool sendFooter = false);
   void sendArgoWREM3(const unsigned char data[],
-                const uint16_t nbytes = kArgoStateLength,
-                const uint16_t repeat = kArgoDefaultRepeat);
+                     const uint16_t nbytes = kArgoStateLength,
+                     const uint16_t repeat = kArgoDefaultRepeat);
 #endif  // SEND_ARGO
 #if SEND_TROTEC
   void sendTrotec(const unsigned char data[],
@@ -647,7 +659,7 @@ class IRsend {
                         uint16_t repeat = kCarrierAc128MinRepeat);
 #endif  // SEND_CARRIER_AC128
 #if (SEND_HAIER_AC || SEND_HAIER_AC_YRW02 || SEND_HAIER_AC160 || \
-    SEND_HAIER_AC176)
+     SEND_HAIER_AC176)
   void sendHaierAC(const unsigned char data[],
                    const uint16_t nbytes = kHaierACStateLength,
                    const uint16_t repeat = kHaierAcDefaultRepeat);
@@ -752,8 +764,8 @@ class IRsend {
 #endif
 #if SEND_TCL96AC
   void sendTcl96Ac(const unsigned char data[],
-                    const uint16_t nbytes = kTcl96AcStateLength,
-                    const uint16_t repeat = kTcl96AcDefaultRepeat);
+                   const uint16_t nbytes = kTcl96AcStateLength,
+                   const uint16_t repeat = kTcl96AcDefaultRepeat);
 #endif  // SEND_TCL96AC
 #if SEND_TCL112AC
   void sendTcl112Ac(const unsigned char data[],
@@ -814,8 +826,7 @@ class IRsend {
                     const uint16_t repeat = kNoRepeat);
 #endif  // SEND_CORONA_AC
 #if SEND_ZEPEAL
-  void sendZepeal(const uint64_t data,
-                  const uint16_t nbits = kZepealBits,
+  void sendZepeal(const uint64_t data, const uint16_t nbits = kZepealBits,
                   const uint16_t repeat = kZepealMinRepeat);
 #endif  // SEND_ZEPEAL
 #if SEND_VOLTAS
@@ -824,8 +835,7 @@ class IRsend {
                   const uint16_t repeat = kNoRepeat);
 #endif  // SEND_VOLTAS
 #if SEND_METZ
-  void sendMetz(const uint64_t data,
-                const uint16_t nbits = kMetzBits,
+  void sendMetz(const uint64_t data, const uint16_t nbits = kMetzBits,
                 const uint16_t repeat = kMetzMinRepeat);
   static uint32_t encodeMetz(const uint8_t address, const uint8_t command,
                              const bool toggle = false);
@@ -911,13 +921,13 @@ class IRsend {
 #endif  // SEND_WOWWEE
 #if SEND_YORK
   void sendYork(const unsigned char data[],
-                    const uint16_t nbytes = kYorkStateLength,
-                    const uint16_t repeat = kNoRepeat);
+                const uint16_t nbytes = kYorkStateLength,
+                const uint16_t repeat = kNoRepeat);
 #endif  // SEND_YORK
 #if SEND_BLUESTARHEAVY
   void sendBluestarHeavy(const unsigned char data[],
-                       const uint16_t nbytes = kBluestarHeavyStateLength,
-                       const uint16_t repeat = kNoRepeat);
+                         const uint16_t nbytes = kBluestarHeavyStateLength,
+                         const uint16_t repeat = kNoRepeat);
 #endif  // SEND_BLUESTARHEAVY
 #if SEND_EUROM
   void sendEurom(const uint8_t data[],
@@ -926,14 +936,6 @@ class IRsend {
 #endif  // SEND_EUROM
 
  protected:
-#ifdef UNIT_TEST
-#ifndef HIGH
-#define HIGH 0x1
-#endif
-#ifndef LOW
-#define LOW 0x0
-#endif
-#endif  // UNIT_TEST
   uint8_t outputOn;
   uint8_t outputOff;
   VIRTUAL void ledOff();
@@ -950,6 +952,8 @@ class IRsend {
   int8_t periodOffset;
   uint8_t _dutycycle;
   bool modulation;
+  bool use_rmt_ = false;
+  uint32_t rmt_period_ = 0;
   uint32_t calcUSecPeriod(uint32_t hz, bool use_offset = true);
 #if SEND_SONY
   void _sendSony(const uint64_t data, const uint16_t nbits,

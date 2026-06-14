@@ -22,6 +22,8 @@
 std::vector<int> timingList;
 #endif  // SWIGLIB
 
+#include "IRsendRMT.h"
+
 /// Constructor for an IRsend object.
 /// @param[in] IRsendPin Which GPIO pin to use when sending an IR command.
 /// @param[in] inverted Optional flag to invert the output. (default = false)
@@ -52,6 +54,9 @@ IRsend::IRsend(uint16_t IRsendPin, bool inverted, bool use_modulation)
 void IRsend::begin() {
 #ifndef UNIT_TEST
   pinMode(IRpin, OUTPUT);
+#ifdef ESP32
+  IRsendRMT_begin(IRpin);
+#endif  // ESP32
 #endif
   ledOff();  // Ensure the LED is in a known safe state when we start.
 }
@@ -113,6 +118,17 @@ void IRsend::enableIROut(uint32_t freq, uint8_t duty) {
   onTimePeriod = (period * _dutycycle) / kDutyMax;
   // Nr. of uSeconds the LED will be off per pulse.
   offTimePeriod = period - onTimePeriod;
+#ifdef ESP32
+  if (modulation && _dutycycle < kDutyMax) {
+    use_rmt_ = true;
+    rmt_period_ = period;
+    IRsendRMT_enableIROut(IRpin, freq, _dutycycle, modulation,
+                          outputOn == HIGH);
+  } else {
+    use_rmt_ = false;
+    rmt_period_ = 0;
+  }
+#endif  // ESP32
 }
 
 #if ALLOW_DELAY_CALLS
@@ -167,6 +183,12 @@ uint16_t IRsend::mark(uint16_t usec) {
   timingList.push_back(usec);
   return 1;
 #else  // SWIGLIB
+#ifdef ESP32
+  if (useRmt()) {
+    return IRsendRMT_mark(IRpin, usec, modulation, outputOn == HIGH,
+                          rmtPeriod());
+  }
+#endif  // ESP32
   // Handle the simple case of no required frequency modulation.
   if (!modulation || _dutycycle >= 100) {
     ledOn();
@@ -186,16 +208,15 @@ uint16_t IRsend::mark(uint16_t usec) {
     ledOn();
     // Calculate how long we should pulse on for.
     // e.g. Are we to close to the end of our requested mark time (usec)?
-    _delayMicroseconds(std::min(static_cast<uint32_t>(onTimePeriod),
-                                usec - elapsed));
+    _delayMicroseconds(
+        std::min(static_cast<uint32_t>(onTimePeriod), usec - elapsed));
     ledOff();
     counter++;
     if (elapsed + onTimePeriod >= usec)
       return counter;  // LED is now off & we've passed our allotted time.
     // Wait for the lesser of the rest of the duty cycle, or the time remaining.
-    _delayMicroseconds(
-        std::min(usec - elapsed - onTimePeriod,
-                 static_cast<uint32_t>(offTimePeriod)));
+    _delayMicroseconds(std::min(usec - elapsed - onTimePeriod,
+                                static_cast<uint32_t>(offTimePeriod)));
     elapsed = usecTimer.elapsed();  // Update & recache the actual elapsed time.
   }
   return counter;
@@ -212,7 +233,7 @@ void IRsend::space(uint32_t time) {
 #ifdef SWIGLIB
   // std::cout << time << " ";
   timingList.push_back(time);
-#else  // SWIGLIB
+#else   // SWIGLIB
   _delayMicroseconds(time);
 #endif  // SWIGLIB
 }
@@ -398,6 +419,9 @@ void IRsend::sendGeneric(const uint16_t headermark, const uint32_t headerspace,
     else
       space(std::max(gap, mesgtime - elapsed));
   }
+#ifdef ESP32
+  if (useRmt()) IRsendRMT_flush(IRpin);
+#endif  // ESP32
 }
 
 /// Generic method for sending simple protocol messages.
@@ -430,7 +454,7 @@ void IRsend::sendGeneric(const uint16_t headermark, const uint32_t headerspace,
                          const uint16_t onemark, const uint32_t onespace,
                          const uint16_t zeromark, const uint32_t zerospace,
                          const uint16_t footermark, const uint32_t gap,
-                         const uint8_t *dataptr, const uint16_t nbytes,
+                         const uint8_t* dataptr, const uint16_t nbytes,
                          const uint16_t frequency, const bool MSBfirst,
                          const uint16_t repeat, const uint8_t dutycycle) {
   // Setup
@@ -450,6 +474,9 @@ void IRsend::sendGeneric(const uint16_t headermark, const uint32_t headerspace,
     if (footermark) mark(footermark);
     space(gap);
   }
+#ifdef ESP32
+  if (useRmt()) IRsendRMT_flush(IRpin);
+#endif  // ESP32
 }
 
 /// Generic method for sending Manchester code data.
@@ -462,8 +489,7 @@ void IRsend::sendGeneric(const uint16_t headermark, const uint32_t headerspace,
 /// @param[in] MSBfirst Flag for bit transmission order.
 ///   Defaults to MSB->LSB order.
 /// @param[in] GEThomas Use G.E. Thomas (true/default) or IEEE 802.3 (false).
-void IRsend::sendManchesterData(const uint16_t half_period,
-                                const uint64_t data,
+void IRsend::sendManchesterData(const uint16_t half_period, const uint64_t data,
                                 const uint16_t nbits, const bool MSBfirst,
                                 const bool GEThomas) {
   if (nbits == 0) return;  // Nothing to send.
@@ -545,6 +571,9 @@ void IRsend::sendManchester(const uint16_t headermark,
     if (footermark) mark(footermark);
     if (gap) space(gap);
   }
+#ifdef ESP32
+  if (useRmt()) IRsendRMT_flush(IRpin);
+#endif  // ESP32
 }
 
 #if SEND_RAW
@@ -567,7 +596,15 @@ void IRsend::sendRaw(const uint16_t buf[], const uint16_t len,
       mark(buf[i]);
     }
   }
+#ifdef ESP32
+  if (useRmt()) {
+    IRsendRMT_flush(IRpin);
+  } else {
+    ledOff();  // We potentially have ended with a mark(), so turn of the LED.
+  }
+#else
   ledOff();  // We potentially have ended with a mark(), so turn of the LED.
+#endif  // ESP32
 }
 #endif  // SEND_RAW
 
@@ -1177,7 +1214,7 @@ bool IRsend::send(const decode_type_t type, const uint64_t data,
 /// @param[in] state A pointer to the array of bytes that make up the state[].
 /// @param[in] nbytes How many bytes are in the state.
 /// @return True if it is a type we can attempt to send, false if not.
-bool IRsend::send(const decode_type_t type, const uint8_t *state,
+bool IRsend::send(const decode_type_t type, const uint8_t* state,
                   const uint16_t nbytes) {
   switch (type) {
 #if SEND_VOLTAS
@@ -1222,13 +1259,13 @@ bool IRsend::send(const decode_type_t type, const uint8_t *state,
 #endif  // SEND_DAIKIN
 #if SEND_DAIKIN128
     case DAIKIN128:
-        sendDaikin128(state, nbytes);
-        break;
+      sendDaikin128(state, nbytes);
+      break;
 #endif  // SEND_DAIKIN128
 #if SEND_DAIKIN152
     case DAIKIN152:
-        sendDaikin152(state, nbytes);
-        break;
+      sendDaikin152(state, nbytes);
+      break;
 #endif  // SEND_DAIKIN152
 #if SEND_DAIKIN160
     case DAIKIN160:
